@@ -37,13 +37,16 @@ jobs:
       run: |
         echo "Installing Trivy..."
         curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh
+        sudo mv trivy /usr/local/bin/  # Ensure Trivy is in the PATH
         echo "Trivy installed successfully!"
+
+    - name: Verify Trivy installation
+      run: trivy --version  # Verifying Trivy installation
 
     - name: Scan Docker image for vulnerabilities
       run: |
         echo "Scanning Docker image for vulnerabilities..."
-        ./trivy image --severity HIGH,CRITICAL myapp:latest
-      shell: bash
+        trivy image --severity HIGH,CRITICAL myapp:latest
 
     - name: Push Docker image to Docker Hub (only if scan passes)
       if: success()
