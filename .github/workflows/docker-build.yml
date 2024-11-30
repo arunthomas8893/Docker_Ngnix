@@ -1,4 +1,4 @@
-name: Build and Push Docker Image to Docker Hub
+name: Build, Scan, and Push Docker Image to Docker Hub
 
 on:
   push:
@@ -9,7 +9,7 @@ on:
       - main  # Trigger on pull requests to the main branch
 
 jobs:
-  build:
+  build-and-scan:
     runs-on: ubuntu-latest
     
     steps:
@@ -25,7 +25,24 @@ jobs:
         username: ${{ secrets.DOCKER_USERNAME }}  # Docker Hub username
         password: ${{ secrets.DOCKER_PASSWORD }}  # Docker Hub password or personal access token
     
-    - name: Build and push Docker image
+    - name: Build Docker image
+      uses: docker/build-push-action@v3
+      with:
+        context: .  # The context is the current directory
+        file: ./Dockerfile  # The Dockerfile to use
+        push: false  # Don't push yet; scan first
+        tags: myapp:latest  # Tag the local image
+
+    - name: Install Trivy
+      run: |
+        curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh
+
+    - name: Scan Docker image for vulnerabilities
+      run: |
+        trivy image --severity HIGH,CRITICAL myapp:latest
+    
+    - name: Push Docker image to Docker Hub (only if scan passes)
+      if: success()  # Ensure previous steps succeed
       uses: docker/build-push-action@v3
       with:
         context: .  # The context is the current directory
