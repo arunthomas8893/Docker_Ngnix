@@ -1,4 +1,4 @@
-name: Build, Scan, and Push Docker Image to Docker Hub
+name: Build and Push Docker Image to Docker Hub
 
 on:
   push:
@@ -9,50 +9,40 @@ on:
       - main  # Trigger on pull requests to the main branch
 
 jobs:
-  build-and-scan:
+  build:
     runs-on: ubuntu-latest
-
+    
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
-
+    
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v2
-
+    
     - name: Log in to Docker Hub
       uses: docker/login-action@v2
       with:
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
-
+        username: ${{ secrets.DOCKER_USERNAME }}  # Docker Hub username
+        password: ${{ secrets.DOCKER_PASSWORD }}  # Docker Hub password or personal access token
+    
     - name: Build Docker image
       uses: docker/build-push-action@v3
       with:
-        context: .
-        file: ./Dockerfile
-        push: false
-        tags: myapp:latest
+        context: .  # The context is the current directory
+        file: ./Dockerfile  # The Dockerfile to use
+        push: false  # Don't push the image yet
+        tags: myapp:latest  # Tag the local image
 
-    - name: Install Trivy
+    - name: Run Docker Scan
       run: |
-        echo "Installing Trivy..."
-        curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh
-        sudo mv trivy /usr/local/bin/  # Ensure Trivy is in the PATH
-        echo "Trivy installed successfully!"
-
-    - name: Verify Trivy installation
-      run: trivy --version  # Verifying Trivy installation
-
-    - name: Scan Docker image for vulnerabilities
-      run: |
-        echo "Scanning Docker image for vulnerabilities..."
-        trivy image --severity HIGH,CRITICAL myapp:latest
+        echo "Running Docker Scan to check for vulnerabilities..."
+        docker scan myapp:latest  # Scan the image for vulnerabilities
 
     - name: Push Docker image to Docker Hub (only if scan passes)
-      if: success()
+      if: success()  # Only push the image if the scan passes
       uses: docker/build-push-action@v3
       with:
         context: .
         file: ./Dockerfile
-        push: true
-        tags: ${{ secrets.DOCKER_USERNAME }}/nginx:latest
+        push: true  # Push the image to Docker Hub
+        tags: ${{ secrets.DOCKER_USERNAME }}/nginx:latest  # Tag the image for Docker Hub
